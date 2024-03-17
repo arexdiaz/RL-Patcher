@@ -61,10 +61,18 @@ function DeleteLines {
 }
 
 $mavenUrl = "https://dlcdn.apache.org/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.zip"
-$mvnPath = Resolve-Path "./apache-maven-3.9.6/bin/"
+$mvnPath = "./apache-maven-3.9.6/bin/"
 $mavenZipPath = "./apache-maven-3.9.6-bin.zip"
 
+if (-not (Test-Path $mvnPath)) {
+    if (-not (Test-Path $mavenZipPath)) {
+        Write-Host "Downloading Maven..."
+        Invoke-WebRequest -Uri $mavenUrl -OutFile $mavenZipPath
+    }
+    Expand-Archive -Path $mavenZipPath -DestinationPath "./" -Force
+}
 
+$mvnBin = Resolve-Path $mvnPath/mvn.cmd
 $runelite = "https://github.com/runelite/runelite.git"
 $launcher = "https://github.com/runelite/launcher.git"
 
@@ -130,14 +138,6 @@ if (Test-Path -Path "./launcher") {
 Write-Host "Cloning launcher..."
 git clone $launcher
 
-if (-not (Test-Path $mvnPath)) {
-    if (-not (Test-Path $mavenZipPath)) {
-        Write-Host "Downloading Maven..."
-        Invoke-WebRequest -Uri $mavenUrl -OutFile $mavenZipPath
-    }
-    Expand-Archive -Path $mavenZipPath -DestinationPath "./" -Force
-}
-
 Write-Host "Editing pom.xml files..."
 foreach ($pomFile in $pomFiles) {
     (Get-Content -Path $pomFile) -replace '<version>.*SNAPSHOT</version>', "<version>$version</version>" | Set-Content -Path $pomFile
@@ -193,12 +193,12 @@ InsertTextAtLine -filePath $jvmLauncherJavaPath -textToInsert '		StringBuilder c
 
 Write-Host "Running Maven from RuneLite root with -DskipTests..."
 Set-Location -Path $runeliteroot
-Start-Process -FilePath $mvnPath/mvn.cmd -ArgumentList 'install', '-DskipTests' -NoNewWindow -Wait
+Start-Process -FilePath $mvnBin -ArgumentList 'install', '-DskipTests' -NoNewWindow -Wait
 Set-Location -Path ".."
 
 Write-Host "Running Maven from Launcher root with -DskipTests..."
 Set-Location -Path $launcherroot
-Start-Process -FilePath $mvnPath/mvn.cmd -ArgumentList 'install', '-DskipTests' -NoNewWindow -Wait
+Start-Process -FilePath $mvnBin -ArgumentList 'install', '-DskipTests' -NoNewWindow -Wait
 Set-Location -Path ".."
 
 if (-not (Test-Path $repositoryPath)) {
